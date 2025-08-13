@@ -1,20 +1,24 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "termios-util.h"
+#include "util.h"
+
 int brot_point(double real, double imag);
-double coord_trnsfrm(unsigned int index, unsigned int size, double bot_bound, double up_bound);
-char* color(unsigned int count);
+
+double real_min = -1.5, real_max = 0.5;
+double imag_min = -1.0, imag_max = 1.0;
 
 int main(void) {
+    enable_raw_mode();
+
     // init
     const int width = 100;
     const int height = 50;
     const char* set[height][width];
 
-    double real_min = -1.5, real_max = 0.5;
-    double imag_min = -1.0, imag_max = 1.0;
-
-    while (true) {
+    bool run = true;
+    while (run) {
         // clear term
         printf("\033[H");
 
@@ -38,52 +42,10 @@ int main(void) {
         }
 
         // input
-        printf("hit enter to submit choice:\n");
-        printf("? q - quit, h - left, j - down, k - up, l - right, + - zoom in, - - zoom in\r");
-        char cmd = (char)getchar();
-
-        double real_range = real_max - real_min;
-        double imag_range = imag_max - imag_min;
-
-        double real_change = real_range * .1;
-        double imag_change = imag_range * .1;
-        switch (cmd) {
-            case 'q':
-                return 0;
-                break;
-            case 'j':
-                imag_min -= imag_change;
-                imag_max -= imag_change;
-                break;
-            case 'k':
-                imag_min += imag_change;
-                imag_max += imag_change;
-                break;
-            case 'h':
-                real_min -= real_change;
-                real_max -= real_change;
-                break;
-            case 'l':
-                real_min += real_change;
-                real_max += real_change;
-                break;
-            case '+':
-                real_min += real_change;
-                real_max -= real_change;
-
-                imag_min += imag_change;
-                imag_max -= imag_change;
-                break;
-            case '-':
-                real_min -= real_change;
-                real_max += real_change;
-
-                imag_min -= imag_change;
-                imag_max += imag_change;
-                break;
-        }
+        run = take_input();
     }
 
+    disable_raw_mode();
     return 0;
 }
 
@@ -106,40 +68,4 @@ int brot_point(double real, double imag) {
     }
 
     return 0;
-}
-
-double coord_trnsfrm(unsigned int index, unsigned int size, double bot_bound, double up_bound) {
-    double percent = index / (double)(size - 1);
-    double range = up_bound - bot_bound;
-
-    return (percent * range) + bot_bound;
-}
-
-char* color(unsigned int count) {
-    switch (count) {
-        case 0:
-            return "\033[0;40m";  // Black block (in set)
-            break;
-        case 1:
-            return "\033[0;41m";
-            break;
-        case 2:
-            return "\033[0;42m";
-            break;
-        case 3:
-            return "\033[0;43m";
-            break;
-        case 4:
-            return "\033[0;44m";
-            break;
-        case 5:
-            return "\033[0;45m";
-            break;
-        case 6:
-            return "\033[0;46m";
-            break;
-        default:
-            return "\033[0;47m";  // White block (outside)
-            break;
-    }
 }
