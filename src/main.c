@@ -56,6 +56,26 @@ static void draw(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoin
     cairo_paint(cr);
 }
 
+static gboolean on_scroll_event(GtkEventControllerScroll* controller, double dx, double dy, gpointer user_data) {
+    GtkWidget* draw_area = (GtkWidget*)user_data;
+
+    if (dy < 0) {
+        // zoom in
+        real_min /= 1.1;
+        real_max /= 1.1;
+        imag_min /= 1.1;
+        imag_max /= 1.1;
+    } else if (dy > 0) {
+        real_min *= 1.1;
+        real_max *= 1.1;
+        imag_min *= 1.1;
+        imag_max *= 1.1;
+    }
+
+    gtk_widget_queue_draw(draw_area);
+    return GDK_EVENT_STOP;
+}
+
 static void activate(GtkApplication* app, gpointer user_data) {
     GtkWidget* window = gtk_application_window_new(app);
 
@@ -74,6 +94,11 @@ static void activate(GtkApplication* app, gpointer user_data) {
     gtk_drawing_area_set_content_width(GTK_DRAWING_AREA(draw_area), default_size);
     gtk_drawing_area_set_content_height(GTK_DRAWING_AREA(draw_area), default_size);
     gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(draw_area), draw, pixbuf, nullptr);
+
+    // mouse input init
+    GtkEventController* scroll = gtk_event_controller_scroll_new(GTK_EVENT_CONTROLLER_SCROLL_VERTICAL);
+    g_signal_connect(scroll, "scroll", G_CALLBACK(on_scroll_event), draw_area);
+    gtk_widget_add_controller(GTK_WIDGET(draw_area), scroll);
 
     // link and show win
     gtk_window_set_child(GTK_WINDOW(window), draw_area);
