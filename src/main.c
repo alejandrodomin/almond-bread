@@ -3,23 +3,24 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "termios-util.h"
 #include "util.h"
-
-#define WIDTH 1900
-#define HEIGHT 1000
 
 int brot_point(double real, double imag);
 
 double real_min = -1.5, real_max = 0.5;
 double imag_min = -1.0, imag_max = 1.0;
 
-static GdkPixbuf* pixbuf = NULL;
 static void draw(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer user_data) {
     GdkPixbuf* pixbuf = user_data;
     if (!GDK_IS_PIXBUF(pixbuf)) {
         g_warning("Invalid pixbuf in draw(): %p", pixbuf);
         return;
+    }
+    int curr_width = gdk_pixbuf_get_width(pixbuf);
+    int curr_height = gdk_pixbuf_get_height(pixbuf);
+    if (curr_width != width && curr_height != height) {
+        g_object_unref(pixbuf);
+        pixbuf = gdk_pixbuf_new(GDK_COLORSPACE_RGB, TRUE, 8, width, height);
     }
 
     // 1) Modify pixel data BEFORE drawing
@@ -32,8 +33,8 @@ static void draw(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoin
     for (int y = 0; y < img_height; y++) {
         guchar* row = pixels + y * rowstride;
         for (int x = 0; x < img_width; x++) {
-            double real = coord_trnsfrm(x, WIDTH, real_min, real_max);
-            double imag = coord_trnsfrm(y, HEIGHT, imag_min, imag_max);
+            double real = coord_trnsfrm(x, width, real_min, real_max);
+            double imag = coord_trnsfrm(y, height, imag_min, imag_max);
 
             unsigned int count = brot_point(real, imag);
 
@@ -58,19 +59,20 @@ static void draw(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoin
 static void activate(GtkApplication* app, gpointer user_data) {
     GtkWidget* window = gtk_application_window_new(app);
 
+    const int default_size = 500;
     gtk_window_set_title(GTK_WINDOW(window), "AlmondBread Set");
-    gtk_window_set_default_size(GTK_WINDOW(window), WIDTH, HEIGHT);
+    gtk_window_set_default_size(GTK_WINDOW(window), default_size, default_size);
 
     // drawing area init
     GtkWidget* draw_area = gtk_drawing_area_new();
-    pixbuf = gdk_pixbuf_new(GDK_COLORSPACE_RGB, TRUE, 8, WIDTH, HEIGHT);
+    GdkPixbuf* pixbuf = gdk_pixbuf_new(GDK_COLORSPACE_RGB, TRUE, 8, default_size, default_size);
     if (!pixbuf) {
         g_error("Failed to create GdkPixbuf.");
         return;
     }
 
-    gtk_drawing_area_set_content_width(GTK_DRAWING_AREA(draw_area), WIDTH);
-    gtk_drawing_area_set_content_height(GTK_DRAWING_AREA(draw_area), HEIGHT);
+    gtk_drawing_area_set_content_width(GTK_DRAWING_AREA(draw_area), default_size);
+    gtk_drawing_area_set_content_height(GTK_DRAWING_AREA(draw_area), default_size);
     gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(draw_area), draw, pixbuf, nullptr);
 
     // link and show win
@@ -91,41 +93,41 @@ int main(int argc, char* argv[]) {
     return status;
 }
 
-void misc() {
-    enable_raw_mode();
-    // init
-    const char* set[HEIGHT][WIDTH];
-    // main loop
-    bool run = true;
-    while (run) {
-        // clear term
-        printf("\033[H");
-
-        // gen set
-        for (int y = 0; y < HEIGHT; y++) {
-            for (int x = 0; x < WIDTH; x++) {
-                double real = coord_trnsfrm(x, WIDTH, real_min, real_max);
-                double imag = coord_trnsfrm(y, HEIGHT, imag_min, imag_max);
-
-                unsigned int count = brot_point(real, imag);
-                set[y][x] = color(count);
-            }
-        }
-
-        // print set
-        for (int y = HEIGHT - 1; y >= 0; y--) {
-            for (int x = 0; x < WIDTH; x++) {
-                printf("%s \033[0m", set[y][x]);
-            }
-            printf("\n");
-        }
-
-        // input
-        run = take_input();
-    }
-
-    disable_raw_mode();
-}
+// void misc() {
+//     enable_raw_mode();
+//     // init
+//     const char* set[HEIGHT][WIDTH];
+//     // main loop
+//     bool run = true;
+//     while (run) {
+//         // clear term
+//         printf("\033[H");
+//
+//         // gen set
+//         for (int y = 0; y < HEIGHT; y++) {
+//             for (int x = 0; x < WIDTH; x++) {
+//                 double real = coord_trnsfrm(x, WIDTH, real_min, real_max);
+//                 double imag = coord_trnsfrm(y, HEIGHT, imag_min, imag_max);
+//
+//                 unsigned int count = brot_point(real, imag);
+//                 set[y][x] = color(count);
+//             }
+//         }
+//
+//         // print set
+//         for (int y = HEIGHT - 1; y >= 0; y--) {
+//             for (int x = 0; x < WIDTH; x++) {
+//                 printf("%s \033[0m", set[y][x]);
+//             }
+//             printf("\n");
+//         }
+//
+//         // input
+//         run = take_input();
+//     }
+//
+//     disable_raw_mode();
+// }
 
 int brot_point(double real, double imag) {
     double a = 0.0, b = 0.0;
